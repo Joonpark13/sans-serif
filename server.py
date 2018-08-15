@@ -1,5 +1,6 @@
 import sys
 from pymongo import MongoClient
+from flask import Flask, jsonify
 
 from data_getters import get_terms, get_schools
 
@@ -21,11 +22,13 @@ for i, argument in enumerate(sys.argv[1:]): # Exclude name of script
 # Initialize mongodb connection
 client = MongoClient()
 
+# Initialize flask app
+app = Flask(__name__)
 
 
 # DB Setup ------------------------------------------------------------------------
 
-# If there are no term databases
+# If there are no term databases (First time setup)
 if not any(database[:5] == 'term_' for database in client.database_names()):
     print('Running first time setup...')
 
@@ -38,4 +41,32 @@ if not any(database[:5] == 'term_' for database in client.database_names()):
         db = client['term_{0}'.format(most_recent_term_id)]
         col = db.schools
         col.insert_many(get_schools(most_recent_term_id))
+
+        print('Loading complete.')
+
+
+
+# Server -------------------------------------------------------------------------
+
+def query_data(col_obj, col_lvl):
+    data = []
+
+    for item in col_obj.find({}, {'_id': False}):
+        data.append(item)
+
+    return data
+
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
+
+@app.route('/test')
+def test():
+    db = client.term_4720
+    col = db.schools
+
+    schools = query_data(col, 'schools')
+
+    return jsonify(schools)
 
