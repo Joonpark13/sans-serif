@@ -1,4 +1,5 @@
 import sys
+import os
 from pymongo import MongoClient
 from flask import Flask, jsonify
 
@@ -20,7 +21,8 @@ for i, argument in enumerate(sys.argv[1:]): # Exclude name of script
         load_term = str(sys.argv[i])
 
 # Initialize mongodb connection
-client = MongoClient()
+client = MongoClient(os.environ['MONGODB_URI'])
+db = client[os.environ['MONGODB_DB_NAME']]
 
 # Initialize flask app
 app = Flask(__name__)
@@ -28,21 +30,21 @@ app = Flask(__name__)
 
 # DB Setup ------------------------------------------------------------------------
 
-# If there are no term databases (First time setup)
-if not any(database[:5] == 'term_' for database in client.database_names()):
-    print('Running first time setup...')
+def setup():
+    # If there are no terms (First time setup)
+    if len(db.collection_names()) == 0:
+        print('Running first time setup...')
 
-    # By default, load the most recent term in the database
-    if not load_all and not load_term:
-        print('Loading most recent term data into database...')
+        # By default, load the most recent term
+        if not load_all and not load_term:
+            print('Loading most recent term data into database...')
 
-        most_recent_term_id = get_terms()[0]['id']
-        
-        db = client['term_{0}'.format(most_recent_term_id)]
-        col = db.schools
-        col.insert_many(get_schools(most_recent_term_id))
+            most_recent_term_id = get_terms()[0]['id']
+            
+            col = db['term_{0}'.format(most_recent_term_id)]
+            col.insert_many(get_schools(most_recent_term_id))
 
-        print('Loading complete.')
+            print('Loading complete.')
 
 
 
@@ -51,7 +53,7 @@ if not any(database[:5] == 'term_' for database in client.database_names()):
 def query_data(col_obj, col_lvl):
     data = []
 
-    for item in col_obj.find({}, {'_id': False}):
+    for item in col_obj.find({'type': col_lvl}, {'_id': False}):
         data.append(item)
 
     return data
@@ -59,14 +61,22 @@ def query_data(col_obj, col_lvl):
 
 @app.route('/')
 def hello_world():
-    return 'Hello, World!'
+    return 'Hello, world!'
 
 @app.route('/test')
 def test():
-    db = client.term_4720
-    col = db.schools
+    col = db.term_4720
 
-    schools = query_data(col, 'schools')
+    schools = query_data(col, 'school')
 
     return jsonify(schools)
+
+
+
+if __name__ == '__main__':
+    setup()
+
+    # port = int(os.environ.get('PORT', 5000))
+    # app.run(host='0.0.0.0', port=port)
+    app.run()
 

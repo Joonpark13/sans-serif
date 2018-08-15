@@ -86,13 +86,17 @@ def get_details(term, school, subject, course, section):
 # Data getters
 
 def get_terms():
-    return make_request('', 'terms')
+    data = make_request('', 'terms')
+    for term in data:
+        term['type'] = 'term'
+    return data
 
 
 def get_schools(term):
     # term is the term id
     data =  make_request(term, 'schools')
     for school in data:
+        school['type'] = 'school'
         school['term'] = term
     return data
 
@@ -102,6 +106,7 @@ def get_subjects(term, school):
     # school is the school id
     data = make_request(term + '/' + school, 'subjects')
     for subject in data:
+        subject['type'] = 'subject'
         subject['term'] = term
         subject['school'] = school
         del subject['path']
@@ -115,6 +120,7 @@ def get_courses(term, school, subject):
     data = make_request(term + '/' + school + '/' + subject, 'courses')
     if data:
         for course in data:
+            course['type'] = 'course'
             course['term'] = term
             course['school'] = school
             course['subject'] = subject
@@ -133,6 +139,7 @@ def get_sections(term, school, subject, course):
     parsed = []
     if data:
         for section in data:
+            section['type'] = 'section'
             section['term'] = term
             section['school'] = school
             section['subject'] = subject
