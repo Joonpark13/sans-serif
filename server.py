@@ -1,7 +1,9 @@
 import sys
 import os
 from pymongo import MongoClient
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
+
+from helpers import get_collection
 
 
 
@@ -33,26 +35,29 @@ app = Flask(__name__)
 
 # Server -------------------------------------------------------------------------
 
-def query_data(collection_obj, collection_lvl):
-    data = []
-
-    for item in collection_obj.find({'type': collection_lvl}, {'_id': False}):
-        data.append(item)
-
-    return data
-
-
 @app.route('/')
 def hello_world():
     return 'Hello, world!'
 
-@app.route('/search/<string:term_id>')
-def search(term_id):
-    collection = db.term_4720
+@app.route('/search')
+def search():
+    term_id = request.args.get('term_id')
+    search_query = request.args.get('search_query')
 
-    schools = query_data(collection, 'school')
+    collection = get_collection(db, term_id)
+    cursor = collection.find({
+        'type': 'course',
+        '$text': { '$search': search_query }
+    }, {
+        'score': { '$meta': 'textScore' },
+        '_id': False
+    }).sort([('score', { '$meta': 'textScore' })])
 
-    return jsonify(schools)
+    search_results = []
+    for search_result in cursor:
+        search_results.append(search_result)
+
+    return jsonify(search_results)
 
 
 

@@ -3,6 +3,7 @@ import os
 from pymongo import MongoClient
 
 from data_getters import get_terms, get_schools, get_subjects, get_courses, get_sections
+from helper import get_collection
 
 def load_term_data(collection, term_id):
     schools_data = get_schools(term_id)
@@ -67,12 +68,12 @@ if __name__ == "__main__":
     # By default, load the most recent term
     if not term_to_load:
         most_recent_term_id = get_terms()[0]['id']
-        collection = db['term_{0}'.format(most_recent_term_id)]
+        collection = get_collection(db, most_recent_term_id)
         print('Loading most recent term by default')
         load_data(collection, most_recent_term_id)
         create_search_index(collection)
     else:
-        collection = db['term_{0}'.format(term_to_load)]
+        collection = get_collection(db, term_to_load)
         load_data(collection, term_to_load)
         create_search_index(collection)
 
