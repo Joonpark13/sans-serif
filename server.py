@@ -46,8 +46,8 @@ def query_data(collection_obj, collection_lvl):
 def hello_world():
     return 'Hello, world!'
 
-@app.route('/test')
-def test():
+@app.route('/search/<string:term_id>')
+def search(term_id):
     collection = db.term_4720
 
     schools = query_data(collection, 'school')

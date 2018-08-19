@@ -25,33 +25,19 @@ def load_term_data(collection, term_id):
     collection.insert_many(sections_data)
 
 
-def setup(db, term_to_load):
-    # By default, load the most recent term
-    if not term_to_load:
-        most_recent_term_id = get_terms()[0]['id']
+def load_data(collection, term_to_load):
+    # If collection doesn't exist
+    if collection.count_documents({}) == 0:
+        print('Loading term {0} data into database...'.format(term_to_load))
+        load_term_data(collection, term_to_load)
+        print('Loading complete.')
+    else:
+        print('Term already loaded.')
 
-        collection = db['term_{0}'.format(most_recent_term_id)]
 
-        # If collection doesn't exist
-        if collection.count_documents({}) == 0:
-            print('Loading most recent term data into database...')
-            load_term_data(collection, most_recent_term_id)
+def create_search_index(collection):
+    collection.create_index([('subject', 'text'), ('abbv', 'text'), ('name', 'text')])
 
-        else:
-            print('Term already loaded.')
-
-    elif term_to_load:
-        collection = db['term_{0}'.format(term_to_load)]
-
-        # If collection doesn't exist
-        if collection.count_documents({}) == 0:
-            print('Loading term {0} data into database...'.format(term_to_load))
-            load_term_data(collection, term_to_load)
-
-        else:
-            print('Term already loaded.')
-
-    print('Loading complete.')
 
 
 if __name__ == "__main__":
@@ -78,5 +64,15 @@ if __name__ == "__main__":
         client = MongoClient(os.environ['MONGODB_URI'])
         db = client[os.environ['MONGODB_DB_NAME']]
 
-    setup(db, term_to_load)
+    # By default, load the most recent term
+    if not term_to_load:
+        most_recent_term_id = get_terms()[0]['id']
+        collection = db['term_{0}'.format(most_recent_term_id)]
+        print('Loading most recent term by default')
+        load_data(collection, most_recent_term_id)
+        create_search_index(collection)
+    else:
+        collection = db['term_{0}'.format(term_to_load)]
+        load_data(collection, term_to_load)
+        create_search_index(collection)
 
