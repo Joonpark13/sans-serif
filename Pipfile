@@ -8,6 +8,7 @@ requests = "*"
 pymongo = "*"
 flask = "*"
 gunicorn = "*"
+flask-cors = "*"
 
 [dev-packages]
 

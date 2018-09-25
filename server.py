@@ -1,7 +1,8 @@
 import sys
 import os
 from pymongo import MongoClient
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
+from flask_cors import CORS
 
 from helpers import get_collection
 
@@ -30,14 +31,15 @@ else:
 
 # Initialize flask app
 app = Flask(__name__)
+CORS(app, origins=[os.environ['CORS_ALLOWED']])
 
 
 
 # Server -------------------------------------------------------------------------
 
 @app.route('/')
-def hello_world():
-    return 'Hello, world!'
+def index():
+    return redirct('https://github.com/Joonpark13/sans-serif')
 
 @app.route('/search')
 def search():

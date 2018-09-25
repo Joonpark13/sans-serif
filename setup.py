@@ -3,7 +3,7 @@ import os
 from pymongo import MongoClient
 
 from data_getters import get_terms, get_schools, get_subjects, get_courses, get_sections
-from helper import get_collection
+from helpers import get_collection
 
 def load_term_data(collection, term_id):
     schools_data = get_schools(term_id)
