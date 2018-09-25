@@ -88,8 +88,8 @@ if __name__ == "__main__":
     # Initialize mongodb connection
     if options['db_uri'] and options['db_name']:
         print('Custom database specified.')
-        client = MongoClient(provided_uri)
-        db = client[provided_db_name]
+        client = MongoClient(options['db_uri'])
+        db = client[options['db_name']]
     else:
         client = MongoClient(os.environ['MONGODB_URI'])
         db = client[os.environ['MONGODB_DB_NAME']]
