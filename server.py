@@ -39,7 +39,7 @@ CORS(app, origins=[os.environ['CORS_ALLOWED']])
 
 @app.route('/')
 def index():
-    return redirct('https://github.com/Joonpark13/sans-serif')
+    return redirect('https://github.com/Joonpark13/sans-serif')
 
 @app.route('/search')
 def search():
