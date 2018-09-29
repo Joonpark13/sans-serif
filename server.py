@@ -31,7 +31,7 @@ else:
 
 # Initialize flask app
 app = Flask(__name__)
-CORS(app, origins=[os.environ['CORS_ALLOWED']])
+CORS(app, origins=[os.environ['CORS_ALLOWED'], os.environ['CORS_ALLOWED_LOCAL']])
 
 
 

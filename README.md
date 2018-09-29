@@ -17,7 +17,8 @@ The required envrionment variables are as follows:
 * `FLASK_APP` This should be `server.py`, in case you want to run the server through the `flask run` command.
 * `MONGODB_URI`
 * `MONGODB_DB_NAME`
-* `CORS_ALLOWED` The allowed url for the front end (likely your local development url for Serif.nu).
+* `CORS_ALLOWED` The allowed url for the front end (likely your local development url for Serif.nu). Should only be required for production.
+* `CORS_ALLOWED_LOCAL` This is only required for production.
 
 ## Architecture
 
@@ -73,3 +74,6 @@ python script.py --update 4710
 Flask server, serves data from the MongoDB. Endpoints listed below.
 
 ### Endpoints
+
+### Data Structure
+
