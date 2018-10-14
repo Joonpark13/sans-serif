@@ -3,6 +3,7 @@ import os
 from pymongo import MongoClient
 from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
+from bson.objectid import ObjectId
 
 from helpers import get_collection
 
@@ -35,6 +36,37 @@ CORS(app, origins=[os.environ['CORS_ALLOWED'], os.environ['CORS_ALLOWED_LOCAL']]
 
 
 
+# Helpers ------------------------------------------------------------------------
+
+def stringify_ids(search_result):
+    '''
+    Takes a document or a list of PyMongo documents and converts their _ids to strings
+
+    '''
+
+    def stringify_single_document_id(doc):
+        doc['_id'] = str(doc['_id'])
+        return doc
+
+    if isinstance(search_result, list):
+        stringified_results = []
+        for result in search_result:
+            stringified_results.append(stringify_single_document_id(result))
+        return stringified_results
+
+    else:
+        return stringify_single_document_id(search_result)
+
+
+def cursor_to_list(results_cursor):
+    results_list = []
+    for result in results_cursor:
+        results_list.append(result)
+
+    return results_list
+
+
+
 # Server -------------------------------------------------------------------------
 
 @app.route('/')
@@ -52,14 +84,30 @@ def search():
         '$text': { '$search': search_query }
     }, {
         'score': { '$meta': 'textScore' },
-        '_id': False
     }).sort([('score', { '$meta': 'textScore' })])
 
-    search_results = []
-    for search_result in cursor:
-        search_results.append(search_result)
+    search_results = cursor_to_list(cursor)
 
-    return jsonify(search_results)
+    return jsonify(stringify_ids(search_results))
+
+@app.route('/section')
+def section():
+    term_id = request.args.get('term_id')
+    school_abbv = request.args.get('school_abbv')
+    subject_abbv = request.args.get('subject_abbv')
+    course_abbv = request.args.get('course_abbv')
+
+    collection = get_collection(db, term_id)
+    cursor = collection.find({
+        'type': 'section',
+        'school': school_abbv,
+        'subject': subject_abbv,
+        'course': course_abbv
+    })
+
+    search_results = cursor_to_list(cursor)
+
+    return jsonify(stringify_ids(search_results))
 
 
 
