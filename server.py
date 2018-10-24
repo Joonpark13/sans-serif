@@ -90,8 +90,8 @@ def search():
 
     return jsonify(stringify_ids(search_results))
 
-@app.route('/section')
-def section():
+@app.route('/sections')
+def sections():
     term_id = request.args.get('term_id')
     school_abbv = request.args.get('school_abbv')
     subject_abbv = request.args.get('subject_abbv')
