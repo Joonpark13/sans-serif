@@ -73,6 +73,7 @@ def cursor_to_list(results_cursor):
 def index():
     return redirect('https://github.com/Joonpark13/sans-serif')
 
+
 @app.route('/search')
 def search():
     term_id = request.args.get('term_id')
@@ -89,6 +90,21 @@ def search():
     search_results = cursor_to_list(cursor)
 
     return jsonify(stringify_ids(search_results))
+
+
+@app.route('/schools')
+def schools():
+    term_id = request.args.get('term_id')
+
+    collection = get_collection(db, term_id)
+    cursor = collection.find({
+        'type': 'school'
+    })
+
+    search_results = cursor_to_list(cursor)
+
+    return jsonify(stringify_ids(search_results))
+
 
 @app.route('/sections')
 def sections():
