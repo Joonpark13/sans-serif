@@ -9,8 +9,10 @@ pymongo = "*"
 flask = "*"
 gunicorn = "*"
 flask-cors = "*"
+firebase-admin = "*"
 
 [dev-packages]
+pylint = "*"
 
 [requires]
 python_version = "3.7"

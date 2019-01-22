@@ -1,48 +1,39 @@
 import sys
 import os
-from pymongo import MongoClient
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
 
 from data_getters import get_terms, get_schools, get_subjects, get_courses, get_sections
-from helpers import get_collection
 
 
+cred = credentials.Certificate('./sans-serif-northwestern-728315dd9469.json')
+firebase_admin.initialize_app(cred)
 
-def check_if_term_exists(db, term_id):
-    collections = db.list_collection_names()
-    for col_name in collections:
-        if term_id == col_name[5:]: # term names are in the format of term_4710
-            return True
-    return False
+db = firestore.client()
 
 
-def get_most_recent_term():
-   return get_terms()[0]['id']
-
-
-def handle_command_line_arguments(args):
+def parse_command_line_arguments(args):
     options = {
-        'option_name': None,
-        'option_value': None,
-        'db_uri': None,
-        'db_name': None,
+        'name': None,
+        'value': None
     }
 
     for i, argument in enumerate(args[1:]): # Exclude name of script
-        if argument == '--db':
-            # Next argument is mongodb uri
-            options['db_uri'] = str(args[i + 2])
-            # Next argument is mongodb db name
-            options['db_name'] = str(args[i + 3])
-        elif argument == '--load-term':
-            options['option_name'] = 'load-term'
+        if argument == '--initialize':
+            options['name'] = 'initialize'
+        elif argument == '--check-for-new-term':
+            options['name'] = 'check-for-new-term'
+        elif argument == '--load-term-data':
+            options['name'] = 'load-term-data'
             # Next argument is term id
-            options['option_value'] = str(args[i + 2])
-        elif argument == '--update':
-            options['option_name'] = 'update'
+            options['value'] = str(args[i + 2])
+        elif argument == '--update-term-data':
+            options['name'] = 'update-term-data'
             try:
                 next_arg = args[i + 2]
                 if not next_arg[:2] == '--':
-                    options['option_value'] = str(next_arg)
+                    options['value'] = str(next_arg)
             except IndexError: 
                 # Next argument doesn't exist - go with default behavior
                 pass
@@ -50,83 +41,157 @@ def handle_command_line_arguments(args):
     return options
 
 
-def load_term_data(collection, term_id):
+def get_newest_term_id(terms):
+    return max([term['id'] for term in terms])
+
+
+def batch_write(collection, data, doc_key = None):
+    counter = 0
+    BATCH_LIMIT = 500
+
+    batch = db.batch()
+    for data_obj in data:
+        if counter == BATCH_LIMIT:
+            batch.commit()
+            batch = db.batch()
+            counter = 0
+
+        if doc_key:
+            new_doc = collection.document(data_obj[doc_key])
+        else:
+            new_doc = collection.document()
+        batch.set(new_doc, data_obj)
+        counter += 1
+
+    batch.commit()
+
+
+def db_has_term(term_id):
+    schools_docs = db.collection('terms').document(term_id).collection('schools').get()
+    for _ in schools_docs:
+        return True
+    return False
+
+
+def get_most_recent_term_in_db():
+    terms = db.collection('terms').get()
+    most_recent_term = { 'id': '0' }
+    for term in terms:
+        if term.id > most_recent_term['id']:
+            most_recent_term = term
+    return most_recent_term.to_dict()
+
+
+def load_term(term_id):
+    print('Loading term {0} data...'.format(term_id))
+
+    terms_data = get_terms()
+    term = list(filter(
+        lambda term_obj: term_obj['id'] == term_id,
+        terms_data
+    ))[0]
+
     schools_data = get_schools(term_id)
+
+    print('Schools data fetched.')
 
     subjects_data = []
     for school in schools_data:
         subjects_data = subjects_data + get_subjects(term_id, school['id'])
 
+    print('Subjects data fetched.')
+
     courses_data = []
     for subject in subjects_data:
-        courses_data = courses_data + get_courses(term_id, subject['school'], subject['abbv'])
+        courses_data = courses_data + get_courses(
+            term_id,
+            subject['schoolId'],
+            subject['id']
+        )
+
+    print('Courses data fetched.')
 
     sections_data = []
     for course in courses_data:
-        sections_data = sections_data + get_sections(term_id, course['school'], course['subject'], course['abbv'])
+        sections_data = sections_data + get_sections(
+            term_id,
+            course['schoolId'],
+            course['subjectId'],
+            course['id']
+        )
 
-    collection.insert_many(schools_data)
-    collection.insert_many(subjects_data)
-    collection.insert_many(courses_data)
-    collection.insert_many(sections_data)
+    print('Sections data fetched.')
+
+    db.collection('terms').document(term['id']).set(term)
+    current_term_doc = db.collection('terms').document(term_id)
+    batch_write(current_term_doc.collection('schools'), schools_data)
+    batch_write(current_term_doc.collection('subjects'), subjects_data)
+    batch_write(current_term_doc.collection('courses'), courses_data)
+    batch_write(current_term_doc.collection('sections'), sections_data)
+
+    print('Data written to database.')
 
 
-def load_data(collection, term_to_load):
-    print('Loading term {0} data into database...'.format(term_to_load))
-    load_term_data(collection, term_to_load)
-    print('Loading complete.')
+def delete_subcollection(doc, subcollection_name):
+    counter = 0
+    BATCH_LIMIT = 500
 
+    batch = db.batch()
+    for data_doc in doc.collection(subcollection_name).get():
+        if counter == BATCH_LIMIT:
+            batch.commit()
+            batch = db.batch()
+            counter = 0
 
-def create_search_index(collection):
-    collection.create_index([('subject', 'text'), ('abbv', 'text'), ('name', 'text')])
+        batch.delete(data_doc.reference)
+        counter += 1
+    batch.commit()
 
 
 
 if __name__ == "__main__":
-    options = handle_command_line_arguments(sys.argv)
+    options = parse_command_line_arguments(sys.argv)
 
-    # Initialize mongodb connection
-    if options['db_uri'] and options['db_name']:
-        print('Custom database specified.')
-        client = MongoClient(options['db_uri'])
-        db = client[options['db_name']]
+    if options['name'] == None:
+        print('''
+        No valid option was specified. Did you mean one of the following options?
+            --initialize
+            --check-for-new-term
+            --load-term-data
+            --update-term-data
+        ''')
+
     else:
-        client = MongoClient(os.environ['MONGODB_URI'])
-        db = client[os.environ['MONGODB_DB_NAME']]
+        if options['name'] == 'initialize':
+            newest_term_id = get_newest_term_id(get_terms())
+            load_term(newest_term_id)
 
-    # By default, load the most recent term
-    if not options['option_name']:
-        most_recent_term_id = get_most_recent_term()
-        if check_if_term_exists(db, most_recent_term_id):
-            print('Most recent term already loaded.')
-        else:
-            collection = get_collection(db, most_recent_term_id)
-            print('Loading most recent term by default.')
-            load_data(collection, most_recent_term_id)
-            create_search_index(collection)
+        if options['name'] == 'check-for-new-term':
+            newest_term_id = get_newest_term_id(get_terms())
+            if str(newest_term_id) == str(get_most_recent_term_in_db()['id']):
+                print('No new term found.')
+            else:
+                print('New term found: {0}'.format(newest_term_id))
 
-    elif options['option_name'] == 'load-term':
-        if check_if_term_exists(db, options['option_value']):
-            print('Term {0} already loaded.'.format(options['option_value']))
-        else:
-            collection = get_collection(db, options['option_value'])
-            load_data(collection, options['option_value'])
-            create_search_index(collection)
+        elif options['name'] == 'load-term-data':
+            term_id = options['value']
+            if db_has_term(term_id):
+                print('Term {0} already loaded.'.format(term_id))
+            else:
+                load_term(term_id)
 
-    elif options['option_name'] == 'update':
-        if options['option_value']:
-            term_to_update = options['option_value']
-        else:
-            term_to_update = get_most_recent_term()
+        elif options['name'] == 'update-term-data':
+            if options['value']:
+                term_to_update = options['value']
+            else:
+                term_to_update = get_most_recent_term_in_db()['id']
 
-        if not check_if_term_exists(db, term_to_update):
-            print('Term data does not exist.')
-        else:
-            # Erase existing data first
-            collection = get_collection(db, term_to_update)
-            print('Purging existing data')
-            collection.drop()
+            if db_has_term(term_to_update):
+                terms_doc = db.collection('terms').document(term_to_update)
+                delete_subcollection(terms_doc, 'schools')
+                delete_subcollection(terms_doc, 'subjects')
+                delete_subcollection(terms_doc, 'courses')
+                delete_subcollection(terms_doc, 'sections')
+                db.collection('terms').document(term_to_update).delete()
 
-            load_data(collection, term_to_update)
-            create_search_index(collection)
-
+            load_term(term_to_update)
