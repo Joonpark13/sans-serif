@@ -9,21 +9,16 @@ We recommend developing in a virtual envrionment such as [pipenv](https://pipenv
 
 Clone the repo, set up a cloud firestore databse, set up the API_URl environment variable, then run `python script.py` to populate the db.
 
+To set up the cloud function, follow the [Cloud Functions documentation](https://firebase.google.com/docs/functions/) (the `functions` directory contains the cloud function files).
+
 ### Environment Variables
 
 * `API_URL` The url for the Northwestern data source
+* `FUNCTIONS_URL` The url for the search index creation cloud function
 
 ## Architecture
 
-### The Sans-Serif Server
-
-Sans-Serif is a cloud firestore service that consists of endpoints designed to serve [Serif.nu](https://serif.nu).
-
-### Heroku Scheduler
-
-Heroku's scheduler allows us to automate data updates during registration season when demand is high and speed is important. A typical registration season may look like this:
-
-On the day when course data for the next quarter is predicted to be released, we schedule `python script.py --check-for-new-term` to be run early every morning until the new term data is made available and is loaded into our database. Then, when pre-registration begins, we schedule `python script.py --update` early every morning to keep the data up to date, until registration week ends. Afterwards, the data is updated manually at the maintainer's discretion.
+Sans-Serif is a serverless backend solution designed for use with (Serif.nu)[https://serif.nu]. It consists of a Cloud Firestore database, a Python script run on AWS Lambda for data updates, and a Cloud Function using elasticlunr for search index creation.
 
 ## Reference
 
@@ -70,6 +65,18 @@ python script.py --update-term-data 4710
 ```
 
 Keep in mind that updating term data can take a very long time.
+
+#### functions/index.js
+
+This is the file that Cloud Functions runs when the cloud function is called.
+
+#### functions/index.dev.js
+
+This is a dev version of index.js meant to simulate a call to the cloud function in a local environment.
+
+#### functions/create-index.js
+
+This shared file contains the function that creates an elasticlunr search index for a given term's course data.
 
 ### Data Structure
 

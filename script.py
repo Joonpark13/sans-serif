@@ -1,5 +1,6 @@
 import sys
 import os
+import requests
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
@@ -11,6 +12,8 @@ cred = credentials.Certificate('./sans-serif-northwestern-728315dd9469.json')
 firebase_admin.initialize_app(cred)
 
 db = firestore.client()
+
+FUNCTIONS_URL = os.environ['FUNCTIONS_URL']
 
 
 def parse_command_line_arguments(args):
@@ -130,6 +133,12 @@ def load_term(term_id):
     batch_write(current_term_doc.collection('sections'), sections_data)
 
     print('Data written to database.')
+
+    requests.post(FUNCTIONS_URL, params={ 'termId': term_id })
+
+    print('Search index created.')
+
+    print('Data loading complete.')
 
 
 def delete_subcollection(doc, subcollection_name):

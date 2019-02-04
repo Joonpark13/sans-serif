@@ -1,3 +1,5 @@
 .vscode/
 .env
 sans-serif-northwestern-*.json
+*node_modules/
+
