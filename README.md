@@ -7,27 +7,30 @@
 
 We recommend developing in a virtual envrionment such as [pipenv](https://pipenv.readthedocs.io/en/latest/).
 
-Clone the repo, set up a cloud firestore databse, set up the API_URl environment variable, then run `python script.py` to populate the db.
+Clone the repo. To use the Python scripts for fetching the data and uploading it to Cloud Firestore, you'll need the `API_URL` environment variable and your own Cloud Firestore. (See "Environment Variables" below)
 
-To set up the cloud function, follow the [Cloud Functions documentation](https://firebase.google.com/docs/functions/) (the `functions` directory contains the cloud function files).
+To set up the cloud function, which is required for the search index creation, follow the [Cloud Functions documentation](https://firebase.google.com/docs/functions/) (the `functions` directory contains the cloud function files).
 
 ### Environment Variables
 
 * `API_URL` The url for the Northwestern data source
 * `FUNCTIONS_URL` The url for the search index creation cloud function
+* You will also need a Firebase admin json file in the root directory. See the [Python Cloud Firestore docs](https://firebase.google.com/docs/firestore/quickstart) to learn how to set up a service account and download the necessary json file.
 
 ## Architecture
 
-Sans-Serif is a serverless backend solution designed for use with (Serif.nu)[https://serif.nu]. It consists of a Cloud Firestore database, a Python script run on AWS Lambda for data updates, and a Cloud Function using elasticlunr for search index creation.
+Sans-Serif is a serverless backend solution designed for use with [Serif.nu](https://serif.nu). It consists of a Cloud Firestore database, a Python script run on AWS Lambda for data updates, and a Cloud Function using elasticlunr for search index creation.
 
 ## Reference
 
 ### Files
 
 #### data_getters.py
+
 Contains the helper functions that query the data from the Northwestern data source.
 
 #### script.py
+
 This is the script file that is used to upload and update the course data into cloud firestore.
 
 *Be aware that the command line arguments are not intended to be used at the same time with one another. Each command line argument is encapsulated for a clear and distinct purpose.*
@@ -80,3 +83,106 @@ This shared file contains the function that creates an elasticlunr search index 
 
 ### Data Structure
 
+The data in Cloud Firestore is structured as follows:
+
+- At the root level, there is a `terms` collection.
+- This `terms` collection contains term documents.
+- A term document consists of the `schools`, `subjects`, `courses`, and `sections` subcollections, along with its own fields (described below).
+
+#### Term
+
+A "term" is equivalent to a quarter, such as 'Winter 2019' or 'Summer 2014'.
+
+```
+{
+  id: string,
+  name: string,
+  searchIndex: string (stringified JSON that represents an elasticlunr search index)
+}
+```
+
+#### School
+
+A "school" is equivalent to a college within Northwestern, such as 'Weinberg' or 'McCormick'.
+
+```
+{
+  id: string,
+  termId: string (equal to the id of the term to which this school belongs),
+  name: string
+}
+```
+
+#### Subject
+
+A "subject" is equivalent to a department within a college, such as 'EECS' or 'PHYSICS'.
+
+```
+{
+  id: string,
+  termId: string (equal to the id of the term to which this subject belongs),
+  schoolId: string (equal to the id of the school to which this subject belongs),
+  name: string
+}
+```
+
+#### Course
+
+A "course" is equivalent to a class offering, such as 'EECS 101-0' or 'PHYSICS 135-3'.
+
+```
+{
+  id: string,
+  termId: string (equal to the id of the term to which this course belongs),
+  schoolId: string (equal to the id of the school to which this course belongs),
+  subjectId: string (equal to the id of the subject to which this course belongs),
+  name: string
+}
+```
+
+#### Section
+
+A "section" is equivalent to a specific section of a class, such as 'EECS 111-0 Section 20'.
+
+```
+{
+  id: string,
+  termId: string (equal to the id of the term to which this section belongs),
+  schoolId: string (equal to the id of the school to which this section belongs),
+  subjectId: string (equal to the id of the subject to which this section belongs),
+  courseId: string (equal to the id of the course to which this section belongs),
+  name: string,
+  sectionNumber: string,
+  topic: string,
+  descriptions: array of description objects,
+  instructors: array of strings (where each string is an instructor name),
+  schedule: array of schedule objects
+}
+```
+
+Description object:
+
+```
+{
+  name: string,
+  value: string
+}
+```
+
+Schedule object:
+
+```
+{
+  dow: array of strings (each string will be one of 'Mo', 'Tu', 'We', 'Th', or 'Fr'),
+  start: {
+    hour: int (0 to 23),
+    minute: int (0 to 59)
+  },
+  end: {
+    hour: int (0 to 23),
+    minute: int (0 to 59)
+  }
+}
+```
+
+So, if you wanted to grab all PHYSICS courses in Winter 2019, you would get the `courses` subcollection from the term object with the `termId` of `'4730'`, then get all documents from that subcollection that match the `schoolId` of `'WCAS'` and `subjectId` of `'PHYSICS'`.
