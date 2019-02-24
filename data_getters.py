@@ -109,32 +109,50 @@ def format_time(time_str):
     }
 
 
+def format_meeting_time(meeting_time, meeting_location):
+    # Format: MoWeFr 12:00PM - 1:50PM
+    split_meeting_time = meeting_time.split()
+
+    if (len(split_meeting_time) == 4):
+        dow_str = meeting_time.split()[0]
+        hour_str = meeting_time.split()[1]
+        minute_str = meeting_time.split()[3]
+        return {
+            'dow': [dow_str[i:i+2] for i in range(0, len(dow_str), 2)],
+            'start': format_time(hour_str),
+            'end': format_time(minute_str),
+            'location': meeting_location
+        }
+
+    return {
+        'dow': 'TBA',
+        'start': 'TBA',
+        'end': 'TBA',
+        'location': meeting_location
+    }
+
+
 def format_schedule(meeting_info):
     formatted = []
     for meeting_obj in meeting_info:
-        meeting_time = meeting_obj['meet_t'] # Format: MoWeFr 12:00PM - 1:50PM
-        split_meeting_time = meeting_time.split()
-        if (len(split_meeting_time) == 4):
-            dow_str = meeting_time.split()[0]
-            hour_str = meeting_time.split()[1]
-            minute_str = meeting_time.split()[3]
-            schedule_obj = {
-                'dow': [dow_str[i:i+2] for i in range(0, len(dow_str), 2)],
-                'start': format_time(hour_str),
-                'end': format_time(minute_str),
-                'location': meeting_obj['meet_l']
-            }
-        else:
-            schedule_obj = {
-                'dow': 'TBA',
-                'start': 'TBA',
-                'end': 'TBA',
-                'location': meeting_obj['meet_l']
-            }
-
-        formatted.append(schedule_obj)
+        formatted.append(
+            format_meeting_time(
+                meeting_obj['meet_t'],
+                meeting_obj['meet_l']
+            )
+        )
     
     return formatted
+
+
+def format_associated_classes(associated_classes):
+    return list(map(lambda associated_class: {
+        'type': associated_class['component'],
+        'schedule': format_meeting_time(
+            associated_class['meeting_time'],
+            associated_class['room']
+        )
+    }, associated_classes))
 
 
 
@@ -216,6 +234,8 @@ def get_sections(term_id, school_id, subject_id, course_id):
         result['topic'] = detail['topic']
         result['schedule'] = format_schedule(detail['class_mtg_info'])
         result['descriptions'] = detail['descriptions']
+        if 'associated_classes' in detail:
+            result['associatedClasses'] = format_associated_classes(detail['associated_classes'])
 
         return result
 

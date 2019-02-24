@@ -156,9 +156,11 @@ A "section" is equivalent to a specific section of a class, such as 'EECS 111-0 
   topic: string,
   descriptions: array of description objects,
   instructors: array of strings (where each string is an instructor name),
-  schedule: array of schedule objects
+  schedule: array of schedule objects,
+  * associatedClasses: array of associated class objects
 }
 ```
+`*` may not exist
 
 Description object:
 
@@ -186,3 +188,12 @@ Schedule object:
 ```
 
 So, if you wanted to grab all PHYSICS courses in Winter 2019, you would get the `courses` subcollection from the term object with the `termId` of `'4730'`, then get all documents from that subcollection that match the `schoolId` of `'WCAS'` and `subjectId` of `'PHYSICS'`.
+
+Associated class object:
+
+```
+{
+  type: string,
+  schedule: schedule object
+}
+```
