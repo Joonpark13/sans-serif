@@ -8,19 +8,20 @@ from firebase_admin import firestore
 from data_getters import get_terms, get_schools, get_subjects, get_courses, get_sections
 
 
-cred = credentials.Certificate('./sans-serif-northwestern-728315dd9469.json')
-firebase_admin.initialize_app(cred)
-
-db = firestore.client()
-
 FUNCTIONS_URL = os.environ['FUNCTIONS_URL']
 
 
 def parse_command_line_arguments(args):
     options = {
         'name': None,
-        'value': None
+        'value': None,
+        'env': 'dev'
     }
+
+    for i, argument in enumerate(args[1:]): # Exclude name of script
+        if argument == '--production':
+            options['env'] = 'prod'
+
 
     for i, argument in enumerate(args[1:]): # Exclude name of script
         if argument == '--initialize':
@@ -48,7 +49,7 @@ def get_newest_term_id(terms):
     return max([term['id'] for term in terms])
 
 
-def batch_write(collection, data, doc_key = None):
+def batch_write(db, collection, data, doc_key = None):
     counter = 0
     BATCH_LIMIT = 500
 
@@ -69,14 +70,14 @@ def batch_write(collection, data, doc_key = None):
     batch.commit()
 
 
-def db_has_term(term_id):
+def db_has_term(db, term_id):
     schools_docs = db.collection('terms').document(term_id).collection('schools').get()
     for _ in schools_docs:
         return True
     return False
 
 
-def get_most_recent_term_in_db():
+def get_most_recent_term_in_db(db):
     terms = db.collection('terms').get()
     most_recent_term = { 'id': '0' }
     for term in terms:
@@ -85,7 +86,7 @@ def get_most_recent_term_in_db():
     return most_recent_term.to_dict()
 
 
-def load_term(term_id):
+def load_term(db, term_id):
     print('Loading term {0} data...'.format(term_id))
 
     terms_data = get_terms()
@@ -127,10 +128,10 @@ def load_term(term_id):
 
     db.collection('terms').document(term['id']).set(term)
     current_term_doc = db.collection('terms').document(term_id)
-    batch_write(current_term_doc.collection('schools'), schools_data)
-    batch_write(current_term_doc.collection('subjects'), subjects_data)
-    batch_write(current_term_doc.collection('courses'), courses_data)
-    batch_write(current_term_doc.collection('sections'), sections_data)
+    batch_write(db, current_term_doc.collection('schools'), schools_data)
+    batch_write(db, current_term_doc.collection('subjects'), subjects_data)
+    batch_write(db, current_term_doc.collection('courses'), courses_data)
+    batch_write(db, current_term_doc.collection('sections'), sections_data)
 
     print('Data written to database.')
 
@@ -141,7 +142,7 @@ def load_term(term_id):
     print('Data loading complete.')
 
 
-def delete_subcollection(doc, subcollection_name):
+def delete_subcollection(db, doc, subcollection_name):
     counter = 0
     BATCH_LIMIT = 500
 
@@ -161,6 +162,18 @@ def delete_subcollection(doc, subcollection_name):
 if __name__ == "__main__":
     options = parse_command_line_arguments(sys.argv)
 
+    dev_creds = './sans-serif-northwestern-728315dd9469.json'
+    prod_creds = './sans-serif-prod-firebase-adminsdk-osgyv-36e8af3b7e.json'
+    if options['env'] == 'prod':
+        cred = credentials.Certificate(prod_creds)
+        print('USING PRODUCTION DATABASE!')
+    else:
+        cred = credentials.Certificate(dev_creds)
+
+    firebase_admin.initialize_app(cred)
+
+    db = firestore.client()
+
     if options['name'] == None:
         print('''
         No valid option was specified. Did you mean one of the following options?
@@ -173,34 +186,34 @@ if __name__ == "__main__":
     else:
         if options['name'] == 'initialize':
             newest_term_id = get_newest_term_id(get_terms())
-            load_term(newest_term_id)
+            load_term(db, newest_term_id)
 
         if options['name'] == 'check-for-new-term':
             newest_term_id = get_newest_term_id(get_terms())
-            if str(newest_term_id) == str(get_most_recent_term_in_db()['id']):
+            if str(newest_term_id) == str(get_most_recent_term_in_db(db)['id']):
                 print('No new term found.')
             else:
                 print('New term found: {0}'.format(newest_term_id))
 
         elif options['name'] == 'load-term-data':
             term_id = options['value']
-            if db_has_term(term_id):
+            if db_has_term(db, term_id):
                 print('Term {0} already loaded.'.format(term_id))
             else:
-                load_term(term_id)
+                load_term(db, term_id)
 
         elif options['name'] == 'update-term-data':
             if options['value']:
                 term_to_update = options['value']
             else:
-                term_to_update = get_most_recent_term_in_db()['id']
+                term_to_update = get_most_recent_term_in_db(db)['id']
 
-            if db_has_term(term_to_update):
+            if db_has_term(db, term_to_update):
                 terms_doc = db.collection('terms').document(term_to_update)
-                delete_subcollection(terms_doc, 'schools')
-                delete_subcollection(terms_doc, 'subjects')
-                delete_subcollection(terms_doc, 'courses')
-                delete_subcollection(terms_doc, 'sections')
+                delete_subcollection(db, terms_doc, 'schools')
+                delete_subcollection(db, terms_doc, 'subjects')
+                delete_subcollection(db, terms_doc, 'courses')
+                delete_subcollection(db, terms_doc, 'sections')
                 db.collection('terms').document(term_to_update).delete()
 
-            load_term(term_to_update)
+            load_term(db, term_to_update)

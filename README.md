@@ -15,7 +15,7 @@ To set up the cloud function, which is required for the search index creation, f
 
 * `API_URL` The url for the Northwestern data source
 * `FUNCTIONS_URL` The url for the search index creation cloud function
-* You will also need a Firebase admin json file in the root directory. See the [Python Cloud Firestore docs](https://firebase.google.com/docs/firestore/quickstart) to learn how to set up a service account and download the necessary json file.
+* You will also need a Firebase admin json file in the root directory. See the [Python Cloud Firestore docs](https://firebase.google.com/docs/firestore/quickstart) to learn how to set up a service account and download the necessary json file. Specifying the `--production` flag to any of the scripts will require having a separate json for the prod firebase.
 
 ## Architecture
 
@@ -68,6 +68,8 @@ python script.py --update-term-data 4710
 ```
 
 Keep in mind that updating term data can take a very long time.
+
+To run these scripts using the production database, specify the `--production` flag in addition to any of the scripts.
 
 #### functions/index.js
 
