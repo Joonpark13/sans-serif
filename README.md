@@ -186,6 +186,7 @@ Schedule object:
     hour: int (0 to 23),
     minute: int (0 to 59)
   }
+  location: string
 }
 ```
 
