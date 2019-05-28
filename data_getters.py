@@ -232,7 +232,7 @@ def get_sections(term_id, school_id, subject_id, course_id):
             return
 
         result['topic'] = detail['topic']
-        result['schedule'] = format_schedule(detail['class_mtg_info'])
+        result['schedules'] = format_schedule(detail['class_mtg_info'])
         result['descriptions'] = detail['descriptions']
         if 'associated_classes' in detail:
             result['associatedClasses'] = format_associated_classes(detail['associated_classes'])

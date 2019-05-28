@@ -158,7 +158,7 @@ A "section" is equivalent to a specific section of a class, such as 'EECS 111-0 
   topic: string,
   descriptions: array of description objects,
   instructors: array of strings (where each string is an instructor name),
-  schedule: array of schedule objects,
+  schedules: array of schedule objects,
   * associatedClasses: array of associated class objects
 }
 ```

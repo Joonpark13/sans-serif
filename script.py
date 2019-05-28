@@ -79,14 +79,10 @@ def db_has_term(db, term_id):
 
 def get_most_recent_term_in_db(db):
     terms = db.collection('terms').get()
-    most_recent_term = { 'id': '0' }
-    for term in terms:
-        if term.id > most_recent_term['id']:
-            most_recent_term = term
-    return most_recent_term.to_dict()
+    return max(terms, key=lambda term: term.id).to_dict()
 
 
-def load_term(db, term_id):
+def load_term(db, term_id, delete_first = False):
     print('Loading term {0} data...'.format(term_id))
 
     terms_data = get_terms()
@@ -125,6 +121,15 @@ def load_term(db, term_id):
         )
 
     print('Sections data fetched.')
+
+    if delete_first and db_has_term(db, term_id):
+        print('Deleting previous data...')
+        terms_doc = db.collection('terms').document(term_id)
+        delete_subcollection(db, terms_doc, 'schools')
+        delete_subcollection(db, terms_doc, 'subjects')
+        delete_subcollection(db, terms_doc, 'courses')
+        delete_subcollection(db, terms_doc, 'sections')
+        db.collection('terms').document(term_id).delete()
 
     db.collection('terms').document(term['id']).set(term)
     current_term_doc = db.collection('terms').document(term_id)
@@ -208,12 +213,5 @@ if __name__ == "__main__":
             else:
                 term_to_update = get_most_recent_term_in_db(db)['id']
 
-            if db_has_term(db, term_to_update):
-                terms_doc = db.collection('terms').document(term_to_update)
-                delete_subcollection(db, terms_doc, 'schools')
-                delete_subcollection(db, terms_doc, 'subjects')
-                delete_subcollection(db, terms_doc, 'courses')
-                delete_subcollection(db, terms_doc, 'sections')
-                db.collection('terms').document(term_to_update).delete()
+            load_term(db, term_to_update, True)
 
-            load_term(db, term_to_update)
