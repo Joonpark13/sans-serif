@@ -1,6 +1,4 @@
 .vscode/
 .env
-.env.*
-sans-serif-*.json
-*node_modules/
+data
 
