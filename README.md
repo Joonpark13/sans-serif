@@ -1,25 +1,13 @@
 # Sans-Serif
-#### Sans-Serif is the API that powers [Serif.nu](https://serif.nu).
+#### Sans-Serif is the data collection script that powers [Serif.nu](https://serif.nu).
 
 ## Setup
 
-### Install
-
 We recommend developing in a virtual envrionment such as [pipenv](https://pipenv.readthedocs.io/en/latest/).
-
-Clone the repo. To use the Python scripts for fetching the data and uploading it to Cloud Firestore, you'll need the `API_URL` environment variable and your own Cloud Firestore. (See "Environment Variables" below)
-
-To set up the cloud function, which is required for the search index creation, follow the [Cloud Functions documentation](https://firebase.google.com/docs/functions/) (the `functions` directory contains the cloud function files).
 
 ### Environment Variables
 
 * `API_URL` The url for the Northwestern data source
-* `FUNCTIONS_URL` The url for the search index creation cloud function (the prod and dev urls are different)
-* You will also need a Firebase admin json file in the root directory. See the [Python Cloud Firestore docs](https://firebase.google.com/docs/firestore/quickstart) to learn how to set up a service account and download the necessary json file. Specifying the `--production` flag to any of the scripts will require having a separate json for the prod firebase.
-
-## Architecture
-
-Sans-Serif is a serverless backend solution designed for use with [Serif.nu](https://serif.nu). It consists of a Cloud Firestore database, a Python script run on AWS Lambda for data updates, and a Cloud Function using elasticlunr for search index creation.
 
 ## Reference
 
@@ -29,59 +17,13 @@ Sans-Serif is a serverless backend solution designed for use with [Serif.nu](htt
 
 Contains the helper functions that query the data from the Northwestern data source.
 
-#### script.py
+#### update.py
 
-This is the script file that is used to upload and update the course data into cloud firestore.
+Usage: `python update.py 4770`
 
-*Be aware that the command line arguments are not intended to be used at the same time with one another. Each command line argument is encapsulated for a clear and distinct purpose.*
+`4770` is the term id - replace this with the id of the term that you want to grab the data for. Running this will create a `data/4770` directory, within which will contain the json files for that term. If this directory already exists, all of the existing json in it will be removed and re-fetched. the `data` directory will also have a special `terms.json` file which will be updated with a new term if you run this script for the first time for a given term. See the Serif.nu data update documentation on how to transfer these json files over to Serif.nu correctly.
 
-`--initialize` loads the data for the most recent term into the database. Example:
-
-```
-python script.py --initialize
-```
-
-`--check-for-new-term` checks the API to see if data for a new term has been published. Example:
-
-```
-python script.py --check-for-new-term
-```
-
-`--load-term-data` allows you to specify the term id for the term that you want loaded into the database. This will not overwrite existing data if this term data already exists in the database. Example:
-
-```
-python script.py --load-term-data 4710
-```
-
-Keep in mind that loading term data can take a very long time.
-
-`--update-term-data` allows you to update the most recent term stored in the database or a specified term. This command **will** overwrite existing data. To update the most recent term in the database:
-
-```
-python script.py --update-term-data
-```
-
-Or to update a specific term:
-
-```
-python script.py --update-term-data 4710
-```
-
-Keep in mind that updating term data can take a very long time.
-
-To run these scripts using the production database, specify the `--production` flag in addition to any of the scripts.
-
-#### functions/index.js
-
-This is the file that Cloud Functions runs when the cloud function is called.
-
-#### functions/index.dev.js
-
-This is a dev version of index.js meant to simulate a call to the cloud function in a local environment.
-
-#### functions/create-index.js
-
-This shared file contains the function that creates an elasticlunr search index for a given term's course data.
+Keep in mind that these scripts can run for a very long time.
 
 ### Data Structure
 
