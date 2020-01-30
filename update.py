@@ -70,26 +70,33 @@ def delete_term(term_id):
 
 def create_files(data, term_id):
     print('Writing files...')
+    
+    if not os.path.exists(TERM_DIR_TEMPLATE.format("")):
+      os.mkdir(TERM_DIR_TEMPLATE.format(""))
     term_dir = TERM_DIR_TEMPLATE.format(term_id)
     os.mkdir(term_dir)
 
-    with open('data/terms.json') as terms_file:
-        terms_data = json.load(terms_file)
-        terms_data.append(data['term'])
+    terms_data = []
 
-    with open('data/terms.json', 'w') as terms_file:
+    if os.path.exists('data/terms.json'):
+      with open('data/terms.json') as terms_file:
+        terms_data = json.load(terms_file)
+    
+    terms_data.append(data['term'])
+
+    with open('data/terms.json', 'w+') as terms_file:
         json.dump(terms_data, terms_file)
 
-    with open('{0}/schools.json'.format(term_dir), 'w') as schools_file:
+    with open('{0}/schools.json'.format(term_dir), 'w+') as schools_file:
         json.dump(data['schools'], schools_file)
 
-    with open('{0}/subjects.json'.format(term_dir), 'w') as subjects_file:
+    with open('{0}/subjects.json'.format(term_dir), 'w+') as subjects_file:
         json.dump(data['subjects'], subjects_file)
 
-    with open('{0}/courses.json'.format(term_dir), 'w') as courses_file:
+    with open('{0}/courses.json'.format(term_dir), 'w+') as courses_file:
         json.dump(data['courses'], courses_file)
 
-    with open('{0}/sections.json'.format(term_dir), 'w') as sections_file:
+    with open('{0}/sections.json'.format(term_dir), 'w+') as sections_file:
         json.dump(data['sections'], sections_file)
 
     print('Files created.')
